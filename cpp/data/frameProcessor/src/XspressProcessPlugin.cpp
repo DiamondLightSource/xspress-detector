@@ -27,7 +27,9 @@ const std::string XspressProcessPlugin::CONFIG_FRAMES               = "frames";
 const std::string XspressProcessPlugin::CONFIG_DTC_FLAGS            = "dtc/flags";
 const std::string XspressProcessPlugin::CONFIG_DTC_PARAMS           = "dtc/params";
 
-const std::string XspressProcessPlugin::CONFIG_CHUNK                = "chunks";
+  const std::string XspressProcessPlugin::CONFIG_CHUNK = "chunks";
+
+  const std::string XspressProcessPlugin::CONFIG_OFFSET = "offset";
 
 const std::string META_NAME = "xspress";
 const std::string META_XSPRESS_CHUNK = "xspress_meta_chunk";
@@ -138,7 +140,8 @@ XspressProcessPlugin::XspressProcessPlugin() :
   scalar_memblock_(0),
   dtc_memblock_(0),
   inp_est_memblock_(0),
-  num_scalars_recorded_(0)
+  num_scalars_recorded_(0),
+                                                 offset(0)
 {
   // Setup logging for the class
   logger_ = Logger::getLogger("FP.XspressProcessPlugin");
@@ -220,8 +223,14 @@ void XspressProcessPlugin::configure(OdinData::IpcMessage& config, OdinData::Ipc
                         boost::to_string(this->frames_per_block_),
                         buffer.GetString());
 
-    LOG4CXX_INFO(logger_, "Number of frames per block set to " << this->frames_per_block_);
-  }
+      LOG4CXX_INFO(logger_, "Number of frames per block set to " << this->frames_per_block_);
+    }
+
+    if(config.has_param(XspressProcessPlugin::CONFIG_OFFSET))
+    {
+      this->offset = config.get_param<uint32_t>(XspressProcessPlugin::CONFIG_OFFSET);
+      LOG4CXX_INFO(logger_,"\n\nconfigured offset: " << offset << "\n\n");
+    }
 
   // Check for the live view plugin name
   if (config.has_param(XspressProcessPlugin::CONFIG_LIVE_VIEW_NAME)) {
@@ -501,12 +510,12 @@ void XspressProcessPlugin::process_frame(boost::shared_ptr <Frame> frame)
   }
 }
 
-void XspressProcessPlugin::send_scalars(uint32_t last_frame_id, uint32_t num_scalars, uint32_t first_channel, uint32_t num_channels)
-{
-  uint32_t num_scalar_values = num_scalars * num_channels;
-  uint32_t num_dtc_factors = num_channels;
-  uint32_t num_inp_est = num_channels;
-  uint32_t frame_id = last_frame_id - num_scalars_recorded_ + 1;
+  void XspressProcessPlugin::send_scalars(uint32_t last_frame_id, uint32_t num_scalars, uint32_t first_channel, uint32_t num_channels)
+  {
+    uint32_t num_scalar_values = num_scalars * num_channels;
+    uint32_t num_dtc_factors = num_channels;
+    uint32_t num_inp_est = num_channels;
+    uint32_t frame_id = (last_frame_id - num_scalars_recorded_ + 1)  + (this->offset * this->frames_per_block_); //Acquisition frame ID + Offset
 
   rapidjson::Document meta_document;
   meta_document.SetObject();
