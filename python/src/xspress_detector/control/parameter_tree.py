@@ -144,8 +144,10 @@ class TransparentVirtualParameter(VirtualParameter):
 
 class WriteOnlyVirtualParameter(VirtualParameter):
     def __init__(self, param_type, put_cb, validators=None, validate=True):
-        super().__init__(param_type, put_cb=put_cb, validators=validators, validate=validate)
-
+        super().__init__(bool, put_cb=put_cb, validators=validators, validate=validate)
+        self.value = 1
+    def _set(self):
+        self.value = 1
 
 class ValueParameter(VirtualParameter):
     def __init__(self, param_type, initial_value, put_cb=None, validators: List[Callable]=None):
@@ -168,6 +170,9 @@ class ListParameter(ValueParameter):
     def __init__(self, put_cb=None, validators: List[Callable]=None):
         super().__init__(list, [], put_cb=put_cb, validators=validators)
 
+    def get_element(self, index):
+        return self.value[index]
+
     async def put_element(self, index, value):
         if self.put_cb is None:
             raise NotPuttableParameterException()
@@ -186,8 +191,14 @@ class XspressParameterTree:
         self.tree = tree
 
     def get(self, path):
+        tokens = split_path(path)
         result =  self._resolve_path(path)
-        return self._unroll(result)
+
+        if tokens[-1].isdigit():
+            index = tokens[-1].isdigit()
+            return result.get_element(index)
+        else:
+            return self._unroll(result)
 
     def _unroll(self, tree: Union[dict, VirtualParameter]):
         if isinstance(tree, VirtualParameter):

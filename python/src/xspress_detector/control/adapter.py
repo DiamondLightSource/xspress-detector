@@ -36,7 +36,6 @@ class XspressAdapter(AsyncApiAdapter):
 
         self.detector = None
         try:
-            logging.info("[adapter class] self.options: {}".format(self.options))
             endpoint = self.options['endpoint']
             ip, port = endpoint.split(":")
             num_process = int(self.options["num_process"])
@@ -84,7 +83,7 @@ class XspressAdapter(AsyncApiAdapter):
         """
         logging.debug(f"XspressAdapter.get called with path: {path}")
         try:
-            response = self.detector.get(path)
+            response = await self.detector.get(path)
             if not isinstance(response, dict):
                 response = {"value": response}
 
@@ -110,8 +109,9 @@ class XspressAdapter(AsyncApiAdapter):
         """
         logging.debug(debug_method())
         try:
+            print(path)
             data = json_decode(request.body)
-            response = await self.detector.parameter_tree.put(path, data)
+            response = await self.detector.parameter_tree.set(path, data)
             response = "{}".format(response)
             status_code = 200
         except ConnectionError as e:
