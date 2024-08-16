@@ -109,9 +109,15 @@ class XspressAdapter(AsyncApiAdapter):
         """
         logging.debug(debug_method())
         try:
-            print(path)
             data = json_decode(request.body)
-            response = await self.detector.parameter_tree.set(path, data)
+            if path.split("/")[-1].isdigit():
+                field, param, index = path.split("/")
+                newPath = field + "/" + param
+                newData = [-1] * self.detector.max_channels
+                newData[int(index)] = data
+                response = await self.detector.parameter_tree.set(newPath,newData)
+            else:
+                response = await self.detector.parameter_tree.set(path, data)
             response = "{}".format(response)
             status_code = 200
         except ConnectionError as e:
