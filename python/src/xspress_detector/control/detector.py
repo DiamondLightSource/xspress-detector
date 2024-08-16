@@ -12,7 +12,10 @@ from datetime import datetime
 from contextlib import suppress
 from numbers import Number as number
 
+from typing import Any
+
 from odin.adapters.adapter import ApiAdapterRequest, ApiAdapter
+from odin.adapters.async_adapter import AsyncApiAdapter
 from odin.adapters.async_parameter_tree import AsyncParameterTree
 from odin_data.control.ipc_message import IpcMessage
 
@@ -129,6 +132,7 @@ class AsyncPeriodicJob:
 
 
 class MessageType(Enum):
+    STATUS = 0
     CMD = 1
     CONFIG = 2
     REQUEST = 3
@@ -136,22 +140,33 @@ class MessageType(Enum):
     DAQ = 5
 
 
-def _build_message(message_type: MessageType, config: dict = None):
-    if message_type == MessageType.REQUEST:
-        msg = IpcMessage("cmd", XspressDetectorStr.CONFIG_REQUEST)
-        return msg
-    elif message_type == MessageType.APP:
-        params_group = XspressDetectorStr.APP
+class ParamAccess(Enum):
+    """Enumeration of parameter access"""
+
+    ReadOnly = 0
+    ReadWrite = 1
+    WriteOnly = 2
+
+
+def msgType(message_type: MessageType):
+    if message_type == MessageType.APP:
+        return XspressDetectorStr.APP
     elif message_type == MessageType.CONFIG:
-        params_group = XspressDetectorStr.CONFIG
+        return XspressDetectorStr.CONFIG
     elif message_type == MessageType.CMD:
-        params_group = XspressDetectorStr.CMD
+        return XspressDetectorStr.CMD
     elif message_type == MessageType.DAQ:
-        params_group = XspressDetectorStr.CONFIG_DAQ
+        return XspressDetectorStr.CONFIG_DAQ
     else:
         raise XspressDetectorException(
             f"xspress_odin._build_message: {message_type} is not type MessageType"
         )
+
+def _build_message(message_type: MessageType, config: dict = None):
+    if message_type == MessageType.REQUEST:
+        msg = IpcMessage("cmd", XspressDetectorStr.CONFIG_REQUEST)
+        return msg
+    params_group = msgType(message_type)
     msg = IpcMessage("cmd", "configure")
     msg.set_param(params_group, config)
     return msg
@@ -354,577 +369,83 @@ class XspressDetector(object):
         self.acquisition_complete: bool = False
         self._cache = {} # local cache of the parameter tree
         self._param_tree_waited = False
-        # This will all become a separated method later
+
         self.param = {}
-        temp_param = {}
-        temp_cache = {}
-        for key, items in XspressApi.config_items.items():
-            path = f"{XspressApi.config_uri}/{key}".strip("/")
-            temp_cache[key] = items
-            # if type(items) == list:
-            #     print("Adding {} as a list parameter".format(key))
-            #     temp_param[key] = (
-            #     lambda x=path: self._get_value_list(x),
-            #     lambda val,x=key: self._set_value(MessageType.CONFIG,x,val)
-            # )
-            # else:
-            temp_param[key] = (
-            lambda x=path: self._get_value(x),
-            lambda val,x=key: self._set_value(MessageType.CONFIG,x,val)
-            )
 
-        self.param[XspressApi.config_uri] = temp_param
-        self._cache[XspressApi.config_uri] = temp_cache
-        print("self._cache after initialization = {}".format(self._cache))
-        # old param tree
-        tree = {
-            XspressDetectorStr.API: TransparentValueParameter(str, ""),
-            XspressDetectorStr.APP: {
-                XspressDetectorStr.APP_DEBUG: ValueParameter(
-                    int,
-                    0,
-                    partial(self._put, MessageType.APP, XspressDetectorStr.APP_DEBUG),
-                ),
-                XspressDetectorStr.APP_CTRL_ENDPOINT: VirtualParameter(
-                    str,
-                    lambda: self.ctr_endpoint,
-                    partial(self._set, "ctr_endpoint"),
-                    partial(self._put, MessageType.APP, XspressDetectorStr.APP_DEBUG),
-                ),
-                XspressDetectorStr.APP_SHUTDOWN: WriteOnlyVirtualParameter(
-                    int,
-                    partial(
-                        self._put, MessageType.APP, XspressDetectorStr.APP_SHUTDOWN, 1
-                    ),
-                ),
-            },
-            XspressDetectorStr.CONFIG_DAQ: {
-                XspressDetectorStr.CONFIG_DAQ_ENABLED: ValueParameter(
-                    bool,
-                    False,
-                    partial(
-                        self._put,
-                        MessageType.DAQ,
-                        XspressDetectorStr.CONFIG_DAQ_ENABLED,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_DAQ_ZMQ_ENDPOINTS: ListParameter(),
-            },
-            XspressDetectorStr.CONFIG_REQUEST: WriteOnlyVirtualParameter(
-                int, self.read_config
-            ),
-            XspressDetectorStr.ADAPTER: {
-                XspressDetectorStr.ADAPTER_START_TIME: ReadOnlyVirtualParameter(
-                    str, lambda: self.start_time.strftime("%B %d, %Y %H:%M:%S")
-                ),
-                XspressDetectorStr.ADAPTER_UP_TIME: ReadOnlyVirtualParameter(
-                    str, lambda: str(datetime.now() - self.start_time)
-                ),
-                XspressDetectorStr.ADAPTER_CONNECTED: ReadOnlyVirtualParameter(
-                    bool, self._async_client.is_connected
-                ),
-                XspressDetectorStr.ADAPTER_USERNAME: ReadOnlyVirtualParameter(
-                    str, lambda: self.username
-                ),
-                XspressDetectorStr.ADAPTER_SCAN: VirtualParameter(
-                    number, self.sched.get_time, put_cb=self.sched.set_time
-                ),
-                # XspressDetectorStr.ADAPTER_CONFIG_RAW: ReadOnlyVirtualParameter(
-                #     str, lambda: self.config_raw
-                # ),
-                XspressDetectorStr.ADAPTER_DEBUG_LEVEL: VirtualParameter(
-                    int, lambda: self.logger.level, put_cb=self.logger.setLevel
-                ),
-                XspressDetectorStr.ADAPTER_UPDATE: WriteOnlyVirtualParameter(
-                    int, self.do_updates
-                ),
-                XspressDetectorStr.ADAPTER_RESET: WriteOnlyVirtualParameter(
-                    int, self.reset
-                ),
-            },
-            XspressDetectorStr.STATUS: {
-                XspressDetectorStr.STATUS_SENSOR: {
-                    XspressDetectorStr.STATUS_SENSOR_HEIGHT: ReadOnlyVirtualParameter(
-                        int, lambda: self.mca_channels
-                    ),
-                    XspressDetectorStr.STATUS_SENSOR_WIDTH: ReadOnlyVirtualParameter(
-                        int, lambda: self.max_spectra
-                    ),
-                    XspressDetectorStr.STATUS_SENSOR_BYTES: ReadOnlyVirtualParameter(
-                        int, lambda: self.max_spectra * self.mca_channels * 4
-                    ),  # 4 bytes per int32 point
-                },
-                XspressDetectorStr.STATUS_MANUFACTURER: TransparentValueParameter(
-                    str, "Quantum Detectors"
-                ),
-                XspressDetectorStr.STATUS_MODEL: TransparentValueParameter(
-                    str, "Xspress 3"
-                ),
-                XspressDetectorStr.STATUS_ACQ_COMPLETE: TransparentVirtualParameter(
-                    bool,
-                    lambda: self.acquisition_complete,
-                    partial(self._set, "acquisition_complete"),
-                ),
-                XspressDetectorStr.STATUS_FRAMES: TransparentValueParameter(int, 0),
-                XspressDetectorStr.STATUS_SCALAR_0: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_1: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_2: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_3: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_4: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_5: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_6: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_7: ListParameter(),
-                XspressDetectorStr.STATUS_SCALAR_8: ListParameter(),
-                XspressDetectorStr.STATUS_DTC: ListParameter(),
-                XspressDetectorStr.STATUS_INP_EST: ListParameter(),
-                XspressDetectorStr.STATUS_ERROR: TransparentValueParameter(str, ""),
-                XspressDetectorStr.STATUS_STATE: TransparentValueParameter(str, ""),
-                XspressDetectorStr.STATUS_CONNECTED: TransparentValueParameter(
-                    bool, False
-                ),
-                XspressDetectorStr.STATUS_RECONNECT_REQUIRED: TransparentValueParameter(
-                    bool, False
-                ),
-                XspressDetectorStr.STATUS_TEMP_0: ListParameter(),
-                XspressDetectorStr.STATUS_TEMP_1: ListParameter(),
-                XspressDetectorStr.STATUS_TEMP_2: ListParameter(),
-                XspressDetectorStr.STATUS_TEMP_3: ListParameter(),
-                XspressDetectorStr.STATUS_TEMP_4: ListParameter(),
-                XspressDetectorStr.STATUS_TEMP_5: ListParameter(),
-                XspressDetectorStr.STATUS_CH_FRAMES: ListParameter(),
-                XspressDetectorStr.STATUS_FEM_DROPPED_FRAMES: ListParameter(),
-                XspressDetectorStr.STATUS_CARDS_CONNECTED: ListParameter(),
-                XspressDetectorStr.STATUS_NUM_CH_CONNECTED: ListParameter(),
-            },
-            XspressDetectorStr.CONFIG: {
-                XspressDetectorStr.CONFIG_MODE_CONTROL: WriteOnlyVirtualParameter(
-                    int, self.set_mode
-                ),
-                XspressDetectorStr.CONFIG_MODE: TransparentVirtualParameter(
-                    str, lambda: self.mode, partial(self._set, "mode")
-                ),
-                XspressDetectorStr.CONFIG_NUM_CARDS: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_NUM_CARDS,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_NUM_TF: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put, MessageType.CONFIG, XspressDetectorStr.CONFIG_NUM_TF
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_BASE_IP: ValueParameter(
-                    str,
-                    "",
-                    partial(
-                        self._put, MessageType.CONFIG, XspressDetectorStr.CONFIG_BASE_IP
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_MAX_CHANNELS: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_MAX_CHANNELS,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_MCA_CHANNELS: VirtualParameter(
-                    int,
-                    lambda: self.mca_channels,
-                    partial(self._set, "mca_channels"),
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_MCA_CHANNELS,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_MAX_SPECTRA: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_MAX_SPECTRA,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_DEBUG: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put, MessageType.CONFIG, XspressDetectorStr.CONFIG_DEBUG
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_CONFIG_PATH: ValueParameter(
-                    str,
-                    "",
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_CONFIG_PATH,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_CONFIG_SAVE_PATH: ValueParameter(
-                    str,
-                    "",
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_CONFIG_SAVE_PATH,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_USE_RESGRADES: VirtualParameter(
-                    bool,
-                    lambda: self.use_resgrades,
-                    partial(self._set, "use_resgrades"),
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_USE_RESGRADES,
-                    ),
-                ),
-                XspressDetectorStr.CMD_CONNECT: VirtualParameter(
-                    bool,
-                    lambda: True,
-                    partial(self._set, "connect"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_CONNECT,
-                    ),
-                ),
-                XspressDetectorStr.CMD_DISCONNECT: VirtualParameter(
-                    bool,
-                    lambda: True,
-                    partial(self._set, "disconnect"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_DISCONNECT,
-                    ),
-                ),
+        self.param[XspressApi.status_uri] = self.add_parameters(
+            MessageType.STATUS, XspressApi.status_items, ParamAccess.ReadOnly, XspressApi.status_uri
+        )
 
-                XspressDetectorStr.CMD_SAVE: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "save"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_SAVE,
-                    ),
-                ),
-                XspressDetectorStr.CMD_RESTORE: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "restore"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_RESTORE,
-                    ),
-                ),
-                XspressDetectorStr.CMD_START: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "start"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_START,
-                    ),
-                ),
-                XspressDetectorStr.CMD_STOP: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "stop"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_STOP,
-                    ),
-                ),
-                XspressDetectorStr.CMD_TRIGGER: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "trigger"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_TRIGGER,
-                    ),
-                ),
-                XspressDetectorStr.CMD_START_ACQUISITION: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "start_acquisition"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_START_ACQUISITION,
-                    ),
-                ),
-                XspressDetectorStr.CMD_STOP_ACQUISITION: VirtualParameter(
-                    bool,
-                    lambda: 0,
-                    partial(self._set, "stop_acquisition"),
-                    partial(
-                        self._put,
-                        MessageType.CMD,
-                        XspressDetectorStr.CMD_STOP_ACQUISITION,
-                    ),
-                ),
-                XspressDetectorStr.CMD_RECONFIGURE: VirtualParameter(
-                    bool,
-                    lambda: True,
-                    partial(self._set, "reconfigure"),
-                    partial(self.reconfigure),
-                    validators=[
-                        lambda x: None
-                        if self.acquisition_complete
-                        else raise_exception(
-                            RuntimeError, "Cannot reconfigure while acquiring"
-                        )
-                    ],                    
-                ),
-                XspressDetectorStr.CONFIG_RUN_FLAGS: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_RUN_FLAGS,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_DTC_ENERGY: ValueParameter(
-                    float,
-                    0.0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_DTC_ENERGY,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_TRIGGER_MODE: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_TRIGGER_MODE,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_INVERT_F0: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_INVERT_F0,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_INVERT_VETO: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_INVERT_VETO,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_DEBOUNCE: ValueParameter(
-                    int,
-                    0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_DEBOUNCE,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_EXPOSURE_TIME: ValueParameter(
-                    float,
-                    1.0,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_EXPOSURE_TIME,
-                    ),
-                    validators=[
-                        bound_validator(
-                            XSPRESS_EXPOSURE_LOWER_LIMIT, XSPRESS_EXPOSURE_UPPER_LIMIT
-                        )
-                    ],
-                ),
-                XspressDetectorStr.CONFIG_NUM_IMAGES: ValueParameter(
-                    int,
-                    1,
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_NUM_IMAGES,
-                    ),
-                ),
-                XspressDetectorStr.CONFIG_SCA5_LOW: ListParameter(
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_SCA5_LOW,
-                    )
-                ),
-                XspressDetectorStr.CONFIG_SCA5_HIGH: ListParameter(
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_SCA5_HIGH,
-                    )
-                ),
-                XspressDetectorStr.CONFIG_SCA6_LOW: ListParameter(
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_SCA6_LOW,
-                    )
-                ),
-                XspressDetectorStr.CONFIG_SCA6_HIGH: ListParameter(
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_SCA6_HIGH,
-                    )
-                ),
-                XspressDetectorStr.CONFIG_SCA4_THRESH: ListParameter(
-                    partial(
-                        self._put,
-                        MessageType.CONFIG,
-                        XspressDetectorStr.CONFIG_SCA4_THRESH,
-                    )
-                ),
-                XspressDetectorStr.CONFIG_DTC_FLAGS: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_ALL_EVT_OFF: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_ALL_EVT_GRAD: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_ALL_EVT_RATE_OFF: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_ALL_EVT_RATE_GRAD: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_IN_WIN_OFF: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_IN_WIN_GRAD: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_IN_WIN_RATE_OFF: ListParameter(),
-                XspressDetectorStr.CONFIG_DTC_IN_WIN_RATE_GRAD: ListParameter(),
-            },
-            # XspressDetectorStr.CMD: {
-            #     XspressDetectorStr.CMD_CONNECT: WriteOnlyVirtualParameter(
-            #         bool, self.set_connect
-            #     ),
-            #     XspressDetectorStr.CMD_DISCONNECT: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(
-            #             self._put, MessageType.CMD, XspressDetectorStr.CMD_DISCONNECT
-            #         ),
-            #     ),
-            #     XspressDetectorStr.CMD_SAVE: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_SAVE),
-            #     ),
-            #     XspressDetectorStr.CMD_RESTORE: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_RESTORE),
-            #     ),
-            #     XspressDetectorStr.CMD_START: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_START),
-            #     ),
-            #     XspressDetectorStr.CMD_STOP: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_STOP),
-            #     ),
-            #     XspressDetectorStr.CMD_TRIGGER: WriteOnlyVirtualParameter(
-            #         int,
-            #         partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_TRIGGER),
-            #     ),
-            #     XspressDetectorStr.CMD_START_ACQUISITION: WriteOnlyVirtualParameter(
-            #         int, partial(self.acquire, 1), validate=False
-            #     ),
-            #     XspressDetectorStr.CMD_STOP_ACQUISITION: WriteOnlyVirtualParameter(
-            #         int, partial(self.acquire, 0), validate=False
-            #     ),
-            #     XspressDetectorStr.CMD_RECONFIGURE: WriteOnlyVirtualParameter(
-            #         int,
-            #         self.reconfigure,
-            #         validators=[
-            #             lambda x: None
-            #             if self.acquisition_complete
-            #             else raise_exception(
-            #                 RuntimeError, "Cannot reconfigure while acquiring"
-            #             )
-            #         ],
-            #     ),
-            # },
-            XspressDetectorStr.VERSION: {
-                XspressDetectorStr.VERSION_XSPRESS_DETECTOR: {
-                    XspressDetectorStr.VERSION_XSPRESS_DETECTOR_FULL: TransparentValueParameter(
-                        str, ""
-                    ),
-                    XspressDetectorStr.VERSION_XSPRESS_DETECTOR_MAJOR: TransparentValueParameter(
-                        int, 0
-                    ),
-                    XspressDetectorStr.VERSION_XSPRESS_DETECTOR_MINOR: TransparentValueParameter(
-                        int, 0
-                    ),
-                    XspressDetectorStr.VERSION_XSPRESS_DETECTOR_PATCH: TransparentValueParameter(
-                        int, 0
-                    ),
-                    XspressDetectorStr.VERSION_XSPRESS_DETECTOR_SHORT: TransparentValueParameter(
-                        str, ""
-                    ),
-                }
-            },
-            XspressDetectorStr.PROCESS: {
-                XspressDetectorStr.PROCESS_NUM_MCA: ReadOnlyVirtualParameter(
-                    int, lambda: self.num_process_mca
-                ),
-                XspressDetectorStr.PROCESS_NUM_LIST: ReadOnlyVirtualParameter(
-                    int, lambda: self.num_process_list
-                ),
-                XspressDetectorStr.PROCESS_NUM_CHANS_MCA: ReadOnlyVirtualParameter(
-                    int, lambda: self.num_chan_per_process_mca
-                ),
-                XspressDetectorStr.PROCESS_NUM_CHANS_LIST: ReadOnlyVirtualParameter(
-                    int, lambda: self.num_chan_per_process_list
-                ),
-            },
-        }
-        # self.parameter_tree = XspressParameterTree(tree)
-        # self.parameter_tree = await AsyncParameterTree(param)
+        self.param[XspressApi.version_uri] = self.add_parameters(
+            MessageType.STATUS, XspressApi.version_items, ParamAccess.ReadOnly, XspressApi.version_uri
+        )
 
-    # not sure how this works.
-    # at the param tree this is the callback for the get method. But how calling the cache makes it so that we call the right get method (line 1067)
+        self.param[XspressApi.daq_uri] = self.add_parameters(
+            MessageType.STATUS, XspressApi.daq_items, ParamAccess.ReadOnly, XspressApi.daq_uri
+        )
+
+        self.param[XspressApi.adapter_uri] = self.add_parameters(
+            MessageType.STATUS, XspressApi.adapter_items, ParamAccess.ReadOnly, XspressApi.adapter_uri
+        )
+
+        self.param[XspressApi.process_uri] = self.add_parameters(
+            MessageType.STATUS, XspressApi.process_items, ParamAccess.ReadOnly, XspressApi.process_uri
+        )
+
+        # COMMANDS = {
+        #     "connect": self.connect,
+        #     "disconnect": partial(self._put, MessageType.CMD, "disconnect"),
+        #     "save": partial(self._put, MessageType.CMD, "save"),
+        #     "restore": partial(self._put, MessageType.CMD, "restore"),
+        #     "start": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_START),
+        #     "stop": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_STOP),
+        #     "trigger": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_TRIGGER),
+        #     "start_acquisition": partial(self.acquire, 1),
+        #     "stop_acquisition": partial(self.acquire, 0),
+        #     "reconfigure": self.reconfigure,
+        # }
+        self.param[XspressApi.config_uri] = self.add_parameters(
+            MessageType.CONFIG, XspressApi.config_items, ParamAccess.ReadWrite, XspressApi.config_uri
+        )
+
+        self.param[XspressApi.app_uri] = self.add_parameters(
+            MessageType.APP, XspressApi.app_items, ParamAccess.ReadWrite, XspressApi.app_uri
+        )
+
     async def _get_value(self,path):
-        key, value = path.split("/")
-        return self._cache[key].get(value,None)
+        return self._cache.get(path,None)
 
-    async def _get_value_list(self,path):
-        if path[-1].isdigit() == False:
-            print("full list {}".format(path))
-            return await self._get_value(path)
-        else:
-            print("path = {}".format(path))
-            return 0
-        # field, param, index = path.split("/")
-        # print("_get_value_list call = {} {} {}".format(field, param, index))
-        # param_list = self._get_value(field+"/"+param)
-        # return param_list[index]
-
-    # same question from above, with the add problem of why does it need to be async?
-    # if I add this to the standard param tree it complains that the value was never waited on.
-    # #async
-    # async def _set_value(self,mtype,path,value):
-    #     return await self._put(mtype,path,value)
     async def _set_value(self,mtype,path,value):
         return await self._put(mtype,path,value)
+
+
+    def add_parameters(self, message_type: MessageType,  param: Any, writable: ParamAccess, path: str = ""):
+        if isinstance(param,dict):
+            child = {}
+            for key, items in param.items():
+                child_path = f"{path}/{key}".strip("/")
+                child[key] = self.add_parameters(message_type, items, writable, child_path)
+            return child
+        else:
+            
+            # cache the initial value for each param
+            self._cache[path] = param
+
+            if writable == ParamAccess.ReadOnly:
+                leaf = (lambda x=path: self._get_value(x),)
+           
+            else:
+                if path == "config/reconfigure":
+                    leaf = (
+                            lambda x=path: self._get_value(x),
+                            lambda val,x=path: self.reconfigure(self,x)
+                            )
+                else:
+                    leaf = (
+                            lambda x=path: self._get_value(x),
+                            lambda val,x=path: self._set_value(message_type,x,val)
+                            )
+        return leaf
 
     @property
     def num_chan_per_process_list(self):
@@ -945,14 +466,14 @@ class XspressDetector(object):
         return self.mca_channels // self.num_process_mca
 
     def set_fr_handler(self, handler):
-        self.fr_handler: ApiAdapter = handler
+        self.fr_handler: AsyncApiAdapter = handler
         self.logger.error(f"self.fr_handler set to {handler}")
         req = ApiAdapterRequest(None, accept="application/json")
         resp = self.fr_handler.get(path="config", request=req).data
         logging.error(f"recieved from fr adaptor: {resp}")
 
     def set_fp_handler(self, handler):
-        self.fp_handler: ApiAdapter = handler
+        self.fp_handler: AsyncApiAdapter = handler
         self.logger.error(f"self.fp_handler set to {handler}")
         req = ApiAdapterRequest(None, accept="application/json")
         resp = self.fr_handler.get(path="config", request=req).data
@@ -1022,26 +543,26 @@ class XspressDetector(object):
 
     async def reconfigure(self, *unused):
         mode = (
-            self.mode
+            self._cache["config/mode"]
         )  # save local copy so the value doesn't change from under our feet
 
         # This seems to help when dealing with detectors that don't have 8 channels.
         # Apparently when the detector has a number of channels different from that defined in 'DEFAULT_MAX_CHANNELS',
         # at XspressDetector.h, we have some problems when trying to connect to it straigh away using the reconfigure button.
         await self.reset()
-        await asyncio.sleep(FR_INIT_TIME[mode])
+        await asyncio.sleep(1)
 
         resp = await self._async_client.send_recv(self.configuration.get())
         # resp = await self._put(MessageType.CONFIG, XspressDetectorStr.CONFIG_CONFIG_PATH, self.settings_paths[mode])
-        resp = await self._put(MessageType.CMD, XspressDetectorStr.CMD_DISCONNECT, 1)
+        resp = await self._put(MessageType.CMD, "config/disconnect", 1) # Here disconnect is inside config
         chans = self.mca_channels if mode == XSPRESS_MODE_MCA else self.mca_channels + 1
         await self._put(
-            MessageType.CONFIG, XspressDetectorStr.CONFIG_MAX_CHANNELS, chans
+            MessageType.CONFIG, "config/max_channels", chans
         )
         self.max_channels = chans
         await self.configure_frs(mode)
         await self.configure_fps(mode)
-        await asyncio.sleep(FR_INIT_TIME[mode])
+        await asyncio.sleep(1)
         resp = await self.connect()
         if mode == XSPRESS_MODE_MCA:
             resp = await self._async_client.send_recv(self.configuration.get_daq())
@@ -1079,9 +600,7 @@ class XspressDetector(object):
         setattr(self, attr_name, value)
 
     async def _put(self, message_type: MessageType, config_str: str, value: any):
-        print("_put method")
-        if self._param_tree_waited == False:
-            print("Initializing the parameter tree async")
+        if not self._param_tree_waited:
             self.parameter_tree = await AsyncParameterTree(self.param)
             self._param_tree_waited = True
 
@@ -1090,14 +609,32 @@ class XspressDetector(object):
             raise ConnectionError(
                 "Control server is not connected! Check if it is running and tcp endpoint is configured correctly"
             )
-        msg = _build_message(message_type, {config_str: value})
+
+        field, item = config_str.split("/")
+        
+        # For when commands are available
+        if field == "command":
+            return self.COMMANDS[item](self,value)
+        
+        if isinstance(value,list):
+            index = 0
+            for i in range(len(value)):
+                if value[i] != -1:
+                    index = i
+                    break
+            self._cache[config_str][index] = value[index]
+            msg = _build_message(message_type, {item: self._cache[config_str]})
+            resp = await self._async_client.send_recv(msg)
+            return resp
+
+        msg = _build_message(message_type, {item: value})
         resp = await self._async_client.send_recv(msg)
         return resp
 
     async def get(self, path):
         # return self.parameter_tree.get(path)
         # Initializes the tree
-        if self._param_tree_waited == False:
+        if not self._param_tree_waited:
             self.parameter_tree = await AsyncParameterTree(self.param)
             self._param_tree_waited = True
 
@@ -1107,14 +644,14 @@ class XspressDetector(object):
             return await self.parameter_tree.get(path)
 
         # If asked for element in a list ("param/list/elem")
-        elif path.split("/")[-1].isdigit() == True:
+        elif path.split("/")[-1].isdigit():
             field, param, index = path.split("/")
-            newPath = field+"/"+param
+            newPath = field + "/" + param
             ret = await self.parameter_tree.get(newPath)
             return ret[param][int(index)]
 
         # Command calls always return this
-        elif XspressDetectorStr.CMD in path:
+        elif "command" in path:
             return {"value": 0}
         
         # Value calls
@@ -1214,24 +751,16 @@ class XspressDetector(object):
             raise XspressDetectorException("IpcMessage recieved is not valid")
         # self.config_raw = ipc_msg.get_params()
         # self._param_tree_set_recursive(BASE_PATH, ipc_msg.get_params())
-        # print("read_config loop")
         dictMsg = ipc_msg.get_params()
-        # print("dictMsg type = {}".format(type(dictMsg)))
-        for key, value in dictMsg.items():
-            # print(key)
-            # print(value)
-            if key in self._cache:
-                # print("{} exists in self._cache".format(key))
-                self._cache[key] = value
-        # print("\n\n\ncached parameters: {}\n\n\n\n".format(self._cache.items()))
+        self._param_tree_set_recursive(BASE_PATH, dictMsg)
         return ipc_msg
 
     def _param_tree_set_recursive(self, path, params):
         if not isinstance(params, dict):
             try:
                 path = path.strip("/")
-                self.parameter_tree.set(path, params)
-                # self.logger.debug(f"XspressDetector._param_tree_set_recursive: parameter path {path} was set to {params}")
+                self._cache[path] = params
+
             except KeyError as e:
                 self.logger.error(e)
                 self.logger.warning(
