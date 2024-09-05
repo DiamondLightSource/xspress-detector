@@ -1,0 +1,37 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.194.0/containers/ubuntu
+{
+    "name": "xspress-detector devcontainer",
+    "build":{
+        "dockerfile": "../Dockerfile",
+        "context": "..",
+        "target": "build"
+    },
+    "remoteUser": "${localEnv:VSCODE_REMOTE_USER}",
+    // Add the IDs of extensions you want installed when the container is created.
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.vscode-pylance",
+                "tamasfe.even-better-toml",
+                "redhat.vscode-yaml",
+                "ryanluker.vscode-coverage-gutters",
+                "epicsdeb.vscode-epics",
+                "charliermarsh.ruff",
+                "ms-vscode.cmake-tools",
+                "ms-vscode.cpptools",
+                "ms-azuretools.vscode-docker"
+            ]
+        }
+    },
+
+    "runArgs": [
+        "--net=host",
+        "--security-opt=label=disable"
+    ],
+    // Mount the parent of the project folder so we can access peer projects
+    "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
+    "mounts": [
+        "source=/dev/shm,target=/dev/shm,type=bind"
+    ]
+}
