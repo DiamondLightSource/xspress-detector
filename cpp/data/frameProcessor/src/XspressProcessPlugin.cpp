@@ -223,14 +223,14 @@ void XspressProcessPlugin::configure(OdinData::IpcMessage& config, OdinData::Ipc
                         boost::to_string(this->frames_per_block_),
                         buffer.GetString());
 
-      LOG4CXX_INFO(logger_, "Number of frames per block set to " << this->frames_per_block_);
-    }
+    LOG4CXX_INFO(logger_, "Number of frames per block set to " << this->frames_per_block_);
+  }
 
-    if(config.has_param(XspressProcessPlugin::CONFIG_OFFSET))
-    {
-      this->offset = config.get_param<uint32_t>(XspressProcessPlugin::CONFIG_OFFSET);
-      LOG4CXX_INFO(logger_,"configured offset: " << offset);
-    }
+  if(config.has_param(XspressProcessPlugin::CONFIG_OFFSET))
+  {
+    this->offset = config.get_param<uint32_t>(XspressProcessPlugin::CONFIG_OFFSET);
+    LOG4CXX_INFO(logger_,"configured offset: " << offset);
+  }
 
   // Check for the live view plugin name
   if (config.has_param(XspressProcessPlugin::CONFIG_LIVE_VIEW_NAME)) {
