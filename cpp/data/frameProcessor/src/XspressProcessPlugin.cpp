@@ -250,6 +250,7 @@ void XspressProcessPlugin::requestConfiguration(OdinData::IpcMessage& reply)
                   XspressProcessPlugin::CONFIG_PROCESS_RANK, this->concurrent_rank_);
   reply.set_param(get_name() + "/" + XspressProcessPlugin::CONFIG_ACQ_ID, this->acq_id_);
   reply.set_param(get_name() + "/" + XspressProcessPlugin::CONFIG_LIVE_VIEW_NAME, this->live_view_name_);
+  reply.set_param(get_name() + "/" + XspressProcessPlugin::CONFIG_OFFSET, this->offset);
 }
 
 /**
