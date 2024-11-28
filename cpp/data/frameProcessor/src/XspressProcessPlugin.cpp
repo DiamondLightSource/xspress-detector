@@ -15,17 +15,17 @@
 
 namespace FrameProcessor {
 
-const std::string XspressProcessPlugin::CONFIG_ACQ_ID               = "acq_id";
+const std::string XspressProcessPlugin::CONFIG_ACQ_ID = "acq_id";
 
-const std::string XspressProcessPlugin::CONFIG_PROCESS              = "process";
-const std::string XspressProcessPlugin::CONFIG_PROCESS_NUMBER       = "number";
-const std::string XspressProcessPlugin::CONFIG_PROCESS_RANK         = "rank";
+const std::string XspressProcessPlugin::CONFIG_PROCESS = "process";
+const std::string XspressProcessPlugin::CONFIG_PROCESS_NUMBER = "number";
+const std::string XspressProcessPlugin::CONFIG_PROCESS_RANK = "rank";
 
-const std::string XspressProcessPlugin::CONFIG_LIVE_VIEW_NAME       = "live_view";
+const std::string XspressProcessPlugin::CONFIG_LIVE_VIEW_NAME = "live_view";
 
-const std::string XspressProcessPlugin::CONFIG_FRAMES               = "frames";
-const std::string XspressProcessPlugin::CONFIG_DTC_FLAGS            = "dtc/flags";
-const std::string XspressProcessPlugin::CONFIG_DTC_PARAMS           = "dtc/params";
+const std::string XspressProcessPlugin::CONFIG_FRAMES = "frames";
+const std::string XspressProcessPlugin::CONFIG_DTC_FLAGS = "dtc/flags";
+const std::string XspressProcessPlugin::CONFIG_DTC_PARAMS = "dtc/params";
 
 const std::string XspressProcessPlugin::CONFIG_CHUNK = "chunks";
 
@@ -36,7 +36,7 @@ const std::string META_XSPRESS_CHUNK = "xspress_meta_chunk";
 const std::string META_XSPRESS_SCALARS = "xspress_scalars";
 const std::string META_XSPRESS_DTC = "xspress_dtc";
 const std::string META_XSPRESS_INP_EST = "xspress_inp_est";
-  const std::string META_XSPRESS_SUM = "xspress_sum";
+const std::string META_XSPRESS_SUM = "xspress_sum";
 
 XspressMemoryBlock::XspressMemoryBlock() :
   ptr_(0),
@@ -141,7 +141,7 @@ XspressProcessPlugin::XspressProcessPlugin() :
   scalar_memblock_(0),
   dtc_memblock_(0),
   inp_est_memblock_(0),
-                                                 sum_memblock_(0),
+  sum_memblock_(0),
   num_scalars_recorded_(0),
   offset(0)
 {
@@ -348,25 +348,25 @@ void XspressProcessPlugin::setup_memory_allocation()
   }
   inp_est_memblock_ = malloc(sizeof(double) * this->frames_per_block_ * num_channels_);
 
-    if (sum_memblock_)
-    {
-      free(sum_memblock_);
-    }
-    sum_memblock_ = malloc(sizeof(double) * this->frames_per_block_);
-  }
-
-  void XspressProcessPlugin::calculate_sum(boost::shared_ptr<Frame> frame)
+  if (sum_memblock_)
   {
-    double sum_value = 0;
-    const uint32_t *data = static_cast<const uint32_t *>(frame->get_image_ptr());
-    size_t elements_count = frame->get_image_size() / sizeof(uint32_t);
-    for (size_t pixel_index = 0; pixel_index < elements_count; pixel_index++)
-    {
-      sum_value += data[pixel_index];
-    }
-    double *sum_ptr = (double *)sum_memblock_;
-    sum_ptr += num_scalars_recorded_;
-    memcpy(sum_ptr, &sum_value, sizeof(double));
+    free(sum_memblock_);
+  }
+  sum_memblock_ = malloc(sizeof(double) * this->frames_per_block_);
+}
+
+void XspressProcessPlugin::calculate_sum(boost::shared_ptr<Frame> frame)
+{
+  double sum_value = 0;
+  const uint32_t *data = static_cast<const uint32_t *>(frame->get_image_ptr());
+  size_t elements_count = frame->get_image_size() / sizeof(uint32_t);
+  for (size_t pixel_index = 0; pixel_index < elements_count; pixel_index++)
+  {
+    sum_value += data[pixel_index];
+  }
+  double *sum_ptr = (double *)sum_memblock_;
+  sum_ptr += num_scalars_recorded_;
+  memcpy(sum_ptr, &sum_value, sizeof(double));
 }
 
 void XspressProcessPlugin::process_frame(boost::shared_ptr <Frame> frame)
@@ -446,9 +446,6 @@ void XspressProcessPlugin::process_frame(boost::shared_ptr <Frame> frame)
              );
 
   // Create the live view frame and push it
-    // I'm using this live frame as a way to calculate the sum metadata
-    // That's why it needs to be moved up here at the moment, as I don't want to have to redo the work of creating
-    // a frame without the scalars metadata
   dimensions_t live_dims;
   live_dims.push_back(num_channels_);
   live_dims.push_back(header->num_aux);
@@ -460,16 +457,16 @@ void XspressProcessPlugin::process_frame(boost::shared_ptr <Frame> frame)
   live_frame->set_outer_chunk_size(1);
   // Push out the live MCA data to the live view plugin only
   this->push(live_view_name_, live_frame);
-    calculate_sum(live_frame);
+  calculate_sum(live_frame);
 
-    num_scalars_recorded_ += 1;
+  num_scalars_recorded_ += 1;
 
-    // Send scalars to be writen once we reach the desired number of frames.
-    // Number has to be the same as the number of MCA frames for live processing reasons
-    if ((num_scalars_recorded_ == this->frames_per_block_))
-    {
-      send_scalars(frame_id, header->num_scalars, header->first_channel, header->num_channels);
-    }
+  // Send scalars to be writen once we reach the desired number of frames.
+  // Number has to be the same as the number of MCA frames for live processing reasons
+  if ((num_scalars_recorded_ == this->frames_per_block_))
+  {
+    send_scalars(frame_id, header->num_scalars, header->first_channel, header->num_channels);
+  }
 
   LOG4CXX_DEBUG_LEVEL(1, logger_, "FrameId = " << frame_id);
   for (int index = 0; index < num_channels_; index++){
