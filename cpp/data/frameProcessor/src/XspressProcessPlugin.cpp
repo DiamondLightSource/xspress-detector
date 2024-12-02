@@ -361,11 +361,9 @@ void XspressProcessPlugin::setup_memory_allocation()
  *
  * This method will receive a frame, and sum each element of data on it.
  * The data is stored in the `sum_memblock_` array (allocated in the `setup_memory_allocation method`)
- * and we iterate to by casting a pointer (`sum_ptr`) to the beginning of the array and moving it 
- * by `num_scalars_recorded_` each time this method is called again.
+ * and each time this method is called it stores the result to this array at the offset `num_scalars_recorded_`, i.e.: when
+ * `num_scalars_recorded_` is 0 we store the sum to index 0, when `num_scalars_recorded_` is 1 we store the sum to index 1.
  * The 'num_scalars_recorded_' variable is set back to zero each time the frame arrays are flushed.
- * i.e.: when num_scalars_recorded_ is 0 we move the sum_ptr pointer to index 0,
- * when num_scalars_recorded_ is 1 we move the sum_ptr to index 1 based 
  *  
  * \param[in] frame - shared_ptr for a Frame class that contains the data for the acquisition on each configured channel.
  */
