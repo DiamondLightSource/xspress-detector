@@ -1,0 +1,29 @@
+{
+    "cmake.generator": "Unix Makefiles",
+    "cmake.sourceDirectory": "${workspaceFolder}/cpp",
+    "cmake.buildDirectory": "${workspaceFolder}/vscode_build",
+    "cmake.installPrefix": "/odin",
+    "cmake.configureArgs": [
+        "-DODINDATA_ROOT_DIR=/odin",
+        "-DLIBXSPRESS_ROOT_DIR=/workspaces/libxspress/src"
+    ],
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "editor.formatOnSave": false,
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "never"
+        },
+        "editor.defaultFormatter": "ms-python.python",
+        "editor.rulers": [
+            88
+        ]
+    },
+    "python.linting.flake8Args": [
+        "--max-line-length=88"
+    ],
+    "python.formatting.provider": "black",
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+}
