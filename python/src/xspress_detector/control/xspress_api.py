@@ -5,6 +5,7 @@ class XspressApi:
     adapter_uri = "adapter"
     process_uri = "process"
     version_uri = "version"
+    command_uri = "command"
     daq_uri = "daq"
     app_uri = "app"
 
@@ -105,4 +106,3 @@ class XspressApi:
             "short": "",
         }
     }
-

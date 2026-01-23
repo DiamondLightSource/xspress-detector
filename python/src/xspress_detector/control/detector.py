@@ -379,6 +379,10 @@ class XspressDetector(object):
 
         self.param["module"] = self._name
 
+        self.param[XspressApi.command_uri] = self.add_parameters(
+            MessageType.CMD, XspressApi.command_items, ParamAccess.WriteOnly, XspressApi.command_uri
+        )
+
     async def _get_value(self,path):
         return self._cache.get(path,None)
 
@@ -531,8 +535,8 @@ class XspressDetector(object):
             resp = await self._async_client.send_recv(self.configuration.get_daq())
         return resp
 
-    async def connect(self, *unused):
-        msg = _build_message(MessageType.CMD, {XspressDetectorStr.CMD_CONNECT: 1})
+    async def connect(self, value: bool = True, *unused):
+        msg = _build_message(MessageType.CMD, {XspressDetectorStr.CMD_CONNECT: value})
         return await self._async_client.send_recv(msg, timeout=20)
 
     async def acquire(self, value, *unused):
