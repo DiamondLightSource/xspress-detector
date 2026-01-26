@@ -14,7 +14,7 @@ from numbers import Number as number
 
 from typing import Any
 
-from odin.adapters.adapter import ApiAdapterRequest, ApiAdapter
+from odin.adapters.adapter import ApiAdapterRequest
 from odin.adapters.async_adapter import AsyncApiAdapter
 from odin.adapters.async_parameter_tree import AsyncParameterTree
 from odin_data.control.ipc_message import IpcMessage
@@ -22,17 +22,7 @@ from odin_data.control.ipc_message import IpcMessage
 from .client import AsyncClient
 from .util import ListModeIPPortGen
 from .debug import debug_method
-from .parameter_tree import (
-    WriteOnlyVirtualParameter,
-    VirtualParameter,
-    ReadOnlyVirtualParameter,
-    TransparentVirtualParameter,
-    ValueParameter,
-    TransparentValueParameter,
-    ListParameter,
-    XspressParameterTree,
-    bound_validator,
-)
+
 
 from .xspress_api import XspressApi
 
@@ -243,7 +233,6 @@ class XspressDetectorStr:
     ADAPTER_UP_TIME = "up_time"
     ADAPTER_CONNECTED = "connected"
     ADAPTER_USERNAME = "username"
-    # ADAPTER_CONFIG_RAW = "config_raw"
     ADAPTER_DEBUG_LEVEL = "debug_level"
 
     APP = "app"
@@ -334,19 +323,22 @@ class NotAcknowledgeException(Exception):
 class XspressDetector(object):
     def __init__(
         self,
+        name: str,
         ip: str,
         port: int,
         debug_level=logging.INFO,
         num_process_mca=NUM_FR_MCA,
         num_process_list=NUM_FR_LIST,
     ):
+        
+        self._name = name
+
         self.logger = logging.getLogger()
         self.logger.setLevel(debug_level)
 
         self.endpoint = ENDPOINT_TEMPLATE.format("0.0.0.0", 12000)
         self.start_time = datetime.now()
         self.username = getpass.getuser()
-        # self.config_raw: dict = {}
 
         self._async_client = AsyncClient(ip, port)
         self.timeout = 1
@@ -392,18 +384,6 @@ class XspressDetector(object):
             MessageType.STATUS, XspressApi.process_items, ParamAccess.ReadOnly, XspressApi.process_uri
         )
 
-        # COMMANDS = {
-        #     "connect": self.connect,
-        #     "disconnect": partial(self._put, MessageType.CMD, "disconnect"),
-        #     "save": partial(self._put, MessageType.CMD, "save"),
-        #     "restore": partial(self._put, MessageType.CMD, "restore"),
-        #     "start": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_START),
-        #     "stop": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_STOP),
-        #     "trigger": partial(self._put, MessageType.CMD, XspressDetectorStr.CMD_TRIGGER),
-        #     "start_acquisition": partial(self.acquire, 1),
-        #     "stop_acquisition": partial(self.acquire, 0),
-        #     "reconfigure": self.reconfigure,
-        # }
         self.param[XspressApi.config_uri] = self.add_parameters(
             MessageType.CONFIG, XspressApi.config_items, ParamAccess.ReadWrite, XspressApi.config_uri
         )
@@ -412,6 +392,8 @@ class XspressDetector(object):
             MessageType.APP, XspressApi.app_items, ParamAccess.ReadWrite, XspressApi.app_uri
         )
 
+        self.param["module"] = self._name
+
     async def _get_value(self,path):
         return self._cache.get(path,None)
 
@@ -419,32 +401,28 @@ class XspressDetector(object):
         return await self._put(mtype,path,value)
 
 
-    def add_parameters(self, message_type: MessageType,  param: Any, writable: ParamAccess, path: str = ""):
-        if isinstance(param,dict):
+    def add_parameters(self, message_type: MessageType,  parameters: Any, writable: ParamAccess, path: str = ""):
+        if isinstance(parameters,dict):
             child = {}
-            for key, items in param.items():
-                child_path = f"{path}/{key}".strip("/")
-                child[key] = self.add_parameters(message_type, items, writable, child_path)
+            for name, parameter in parameters.items():
+                child_path = f"{path}/{name}".strip("/")
+                child[name] = self.add_parameters(message_type, parameter, writable, child_path)
             return child
         else:
-            
-            # cache the initial value for each param
-            self._cache[path] = param
+            return self.add_parameter(message_type, parameters, writable, path)
 
-            if writable == ParamAccess.ReadOnly:
-                leaf = (lambda x=path: self._get_value(x),)
-           
-            else:
-                if path == "config/reconfigure":
-                    leaf = (
-                            lambda x=path: self._get_value(x),
-                            lambda val,x=path: self.reconfigure(self,x)
-                            )
-                else:
-                    leaf = (
-                            lambda x=path: self._get_value(x),
-                            lambda val,x=path: self._set_value(message_type,x,val)
-                            )
+    def add_parameter(self, message_type: MessageType,  parameter: Any, writable: ParamAccess, path: str = ""):
+        # cache the initial value for each param
+        self._cache[path] = parameter
+
+        if writable == ParamAccess.ReadOnly:
+            leaf = (lambda x=path: self._get_value(x),)
+        
+        else:
+            leaf = (
+                    lambda x=path: self._get_value(x),
+                    lambda val,x=path: self._set_value(message_type,x,val)
+                    )
         return leaf
 
     @property
@@ -649,11 +627,7 @@ class XspressDetector(object):
             newPath = field + "/" + param
             ret = await self.parameter_tree.get(newPath)
             return ret[param][int(index)]
-
-        # Command calls always return this
-        elif "command" in path:
-            return {"value": 0}
-        
+       
         # Value calls
         else:
             ret = await self.parameter_tree.get(path)
@@ -749,7 +723,6 @@ class XspressDetector(object):
         BASE_PATH = ""
         if not ipc_msg.is_valid():
             raise XspressDetectorException("IpcMessage recieved is not valid")
-        # self.config_raw = ipc_msg.get_params()
         # self._param_tree_set_recursive(BASE_PATH, ipc_msg.get_params())
         dictMsg = ipc_msg.get_params()
         self._param_tree_set_recursive(BASE_PATH, dictMsg)

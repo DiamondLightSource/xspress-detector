@@ -40,7 +40,7 @@ class XspressAdapter(AsyncApiAdapter):
             ip, port = endpoint.split(":")
             num_process = int(self.options["num_process"])
             num_process_list = max(2,num_process-1) if num_process >=2 else 1
-            self.detector = XspressDetector(ip, port, num_process_mca=num_process, num_process_list=num_process_list)
+            self.detector = XspressDetector("XspressAdapter",ip, port, num_process_mca=num_process, num_process_list=num_process_list)
             logging.info(f"instatiated XspressDetector with ip = {ip} and port {port}\n num_process/list = {num_process}/{num_process_list}")
 
             num_cards = int(self.options['num_cards'])

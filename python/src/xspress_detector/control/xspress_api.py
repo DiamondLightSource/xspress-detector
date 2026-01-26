@@ -9,7 +9,7 @@ class XspressApi:
     app_uri = "app"
 
     
-    api_items = {
+    api_parameters = {
         "api": ""
     }
     app_items = {
@@ -105,16 +105,6 @@ class XspressApi:
         "dtc_in_win_grad": [],
         "dtc_in_win_rate_off": [],
         "dtc_in_win_rate_grad": [],
-        "connect": False,
-        "disconnect":False,
-        "save": False,
-        "restore": False,
-        "start": False,
-        "stop": False,
-        "trigger": False,
-        "start_acquisition": False,
-        "stop_acquisition": False,
-        "reconfigure": False,
     }
     version_items = {
         "xspress-detector": {
