@@ -365,31 +365,31 @@ class XspressDetector(object):
         self.param = {}
 
         self.param[XspressApi.status_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.status_items, ParamAccess.ReadOnly, XspressApi.status_uri
+            MessageType.STATUS, XspressApi.status_parameters, ParamAccess.ReadOnly, XspressApi.status_uri
         )
 
         self.param[XspressApi.version_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.version_items, ParamAccess.ReadOnly, XspressApi.version_uri
+            MessageType.STATUS, XspressApi.version_parameters, ParamAccess.ReadOnly, XspressApi.version_uri
         )
 
         self.param[XspressApi.daq_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.daq_items, ParamAccess.ReadOnly, XspressApi.daq_uri
+            MessageType.STATUS, XspressApi.daq_parameters, ParamAccess.ReadOnly, XspressApi.daq_uri
         )
 
         self.param[XspressApi.adapter_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.adapter_items, ParamAccess.ReadOnly, XspressApi.adapter_uri
+            MessageType.STATUS, XspressApi.adapter_parameters, ParamAccess.ReadOnly, XspressApi.adapter_uri
         )
 
         self.param[XspressApi.process_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.process_items, ParamAccess.ReadOnly, XspressApi.process_uri
+            MessageType.STATUS, XspressApi.process_parameters, ParamAccess.ReadOnly, XspressApi.process_uri
         )
 
         self.param[XspressApi.config_uri] = self.add_parameters(
-            MessageType.CONFIG, XspressApi.config_items, ParamAccess.ReadWrite, XspressApi.config_uri
+            MessageType.CONFIG, XspressApi.config_parameters, ParamAccess.ReadWrite, XspressApi.config_uri
         )
 
         self.param[XspressApi.app_uri] = self.add_parameters(
-            MessageType.APP, XspressApi.app_items, ParamAccess.ReadWrite, XspressApi.app_uri
+            MessageType.APP, XspressApi.app_parameters, ParamAccess.ReadWrite, XspressApi.app_uri
         )
 
         self.param["module"] = self._name

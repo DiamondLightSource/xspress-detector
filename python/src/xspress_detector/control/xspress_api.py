@@ -12,19 +12,19 @@ class XspressApi:
     api_parameters = {
         "api": ""
     }
-    app_items = {
+    app_parameters = {
         "debug_level": 0,
         "ctrl_endpoint": "",
         "shutdown": 0,
     }
-    daq_items = {
+    daq_parameters = {
         "enabled": False,
         "endpoints": ""
     }
-    confi_req_items = {
+    confi_req_parameters = {
         "request_configuration": 0,
     }
-    adapter_items = {
+    adapter_parameters = {
         "start_time": "",
         "up_time": "",
         "connected": False,
@@ -34,7 +34,7 @@ class XspressApi:
         "update": 0,
         "reset": 0,
     }
-    status_items = {
+    status_parameters = {
         "sensor": {
             "height": 0,
             "width": 0,
@@ -70,7 +70,7 @@ class XspressApi:
         "cards_connected": [],
         "num_ch_connected": [],
     }
-    config_items = {
+    config_parameters = {
         "mode_control": 0,
         "mode": 0,
         "num_cards": 0,
@@ -106,7 +106,7 @@ class XspressApi:
         "dtc_in_win_rate_off": [],
         "dtc_in_win_rate_grad": [],
     }
-    version_items = {
+    version_parameters = {
         "xspress-detector": {
             "full": "",
             "major": 0,
@@ -115,7 +115,7 @@ class XspressApi:
             "short": "",
         }
     }
-    process_items = {
+    process_parameters = {
         "num_mca": 0,
         "num_list": 0,
         "num_chan_mca": 0,
