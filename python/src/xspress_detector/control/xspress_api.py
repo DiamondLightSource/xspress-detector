@@ -9,32 +9,19 @@ class XspressApi:
     app_uri = "app"
 
     
-    api_parameters = {
-        "api": ""
-    }
-    app_parameters = {
-        "debug_level": 0,
-        "ctrl_endpoint": "",
-        "shutdown": 0,
-    }
-    daq_parameters = {
-        "enabled": False,
-        "endpoints": ""
-    }
-    confi_req_parameters = {
-        "request_configuration": 0,
-    }
-    adapter_parameters = {
+    status_parameters = {
+        "num_mca": 0,
+        "num_list": 0,
+        "num_chan_mca": 0,
+        "num_chan_list": 0,
         "start_time": "",
-        "up_time": "",
-        "connected": False,
+        "uptime": "",
         "username": "",
         "scan": 0,
+        "endpoint": "",
         "debug_level": 0,
         "update": 0,
         "reset": 0,
-    }
-    status_parameters = {
         "sensor": {
             "height": 0,
             "width": 0,
@@ -71,6 +58,9 @@ class XspressApi:
         "num_ch_connected": [],
     }
     config_parameters = {
+        "enabled": False,
+        "endpoints": "",
+        "debug_level": 0,
         "mode_control": 0,
         "mode": 0,
         "num_cards": 0,
@@ -114,11 +104,5 @@ class XspressApi:
             "patch": 0,
             "short": "",
         }
-    }
-    process_parameters = {
-        "num_mca": 0,
-        "num_list": 0,
-        "num_chan_mca": 0,
-        "num_chan_list": 0,
     }
 

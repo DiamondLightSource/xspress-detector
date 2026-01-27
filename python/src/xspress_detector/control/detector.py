@@ -372,25 +372,10 @@ class XspressDetector(object):
             MessageType.STATUS, XspressApi.version_parameters, ParamAccess.ReadOnly, XspressApi.version_uri
         )
 
-        self.param[XspressApi.daq_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.daq_parameters, ParamAccess.ReadOnly, XspressApi.daq_uri
-        )
-
-        self.param[XspressApi.adapter_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.adapter_parameters, ParamAccess.ReadOnly, XspressApi.adapter_uri
-        )
-
-        self.param[XspressApi.process_uri] = self.add_parameters(
-            MessageType.STATUS, XspressApi.process_parameters, ParamAccess.ReadOnly, XspressApi.process_uri
-        )
-
         self.param[XspressApi.config_uri] = self.add_parameters(
             MessageType.CONFIG, XspressApi.config_parameters, ParamAccess.ReadWrite, XspressApi.config_uri
         )
 
-        self.param[XspressApi.app_uri] = self.add_parameters(
-            MessageType.APP, XspressApi.app_parameters, ParamAccess.ReadWrite, XspressApi.app_uri
-        )
 
         self.param["module"] = self._name
 
