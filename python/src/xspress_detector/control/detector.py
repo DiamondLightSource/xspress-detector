@@ -553,11 +553,11 @@ class XspressDetector(object):
 
     async def acquire(self, value):
         if value:
-            reply = await self._put(MessageType.CMD, XspressDetectorStr.CMD_START, 1)
+            reply = await self._put(MessageType.CMD, "command/start", 1)
             self.acquisition_complete = False
             return reply
         else:
-            return await self._put(MessageType.CMD, XspressDetectorStr.CMD_STOP, 1)
+            return await self._put(MessageType.CMD, "command/stop", 1)
 
     async def set_mode(self, value):
         if value == 0:
@@ -589,7 +589,7 @@ class XspressDetector(object):
                 "Control server is not connected! Check if it is running and tcp endpoint is configured correctly"
             )
 
-        # field, item = path.split("/")
+        _, item = path.split("/")
         
         if isinstance(value,list):
             index = 0
@@ -598,11 +598,11 @@ class XspressDetector(object):
                     index = i
                     break
             self._cache[path][index] = value[index]
-            msg = _build_message(message_type, {path: self._cache[path]})
+            msg = _build_message(message_type, {item: self._cache[path]})
             resp = await self._async_client.send_recv(msg)
             return resp
 
-        msg = _build_message(message_type, {path: value})
+        msg = _build_message(message_type, {item: value})
         resp = await self._async_client.send_recv(msg)
         return resp
 
