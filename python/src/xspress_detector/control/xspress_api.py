@@ -97,7 +97,7 @@ class XspressApi:
         "dtc_in_win_rate_grad": [],
     }
     version_parameters = {
-        "xspress-detector": {
+        "xspress_detector": {
             "full": "",
             "major": 0,
             "minor": 0,

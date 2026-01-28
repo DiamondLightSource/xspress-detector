@@ -372,11 +372,11 @@ void XspressController::provideStatus(OdinData::IpcMessage& reply)
 void XspressController::provideVersion(OdinData::IpcMessage& reply)
 {
   // Populate the reply with top-level odin-data application version information
-  reply.set_param("version/xspress-detector/major", XSPRESS_DETECTOR_VERSION_MAJOR);
-  reply.set_param("version/xspress-detector/minor", XSPRESS_DETECTOR_VERSION_MINOR);
-  reply.set_param("version/xspress-detector/patch", XSPRESS_DETECTOR_VERSION_PATCH);
-  reply.set_param("version/xspress-detector/short", std::string(XSPRESS_DETECTOR_VERSION_STR_SHORT));
-  reply.set_param("version/xspress-detector/full", std::string(XSPRESS_DETECTOR_VERSION_STR)); 
+  reply.set_param("version/xspress_detector/major", XSPRESS_DETECTOR_VERSION_MAJOR);
+  reply.set_param("version/xspress_detector/minor", XSPRESS_DETECTOR_VERSION_MINOR);
+  reply.set_param("version/xspress_detector/patch", XSPRESS_DETECTOR_VERSION_PATCH);
+  reply.set_param("version/xspress_detector/short", std::string(XSPRESS_DETECTOR_VERSION_STR_SHORT));
+  reply.set_param("version/xspress_detector/full", std::string(XSPRESS_DETECTOR_VERSION_STR)); 
 }
 
 /** Provide API information to requesting clients.
