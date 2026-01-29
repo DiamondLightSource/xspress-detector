@@ -377,7 +377,7 @@ class XspressDetector(object):
         )
 
 
-        self.param["module"] = self._name
+        self.param["module"] = {"value": self._name}
 
         self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition", "trigger"],
                                  "execute": ("", lambda name: self.run_command(name))
