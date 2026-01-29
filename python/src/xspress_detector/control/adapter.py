@@ -85,12 +85,8 @@ class XspressAdapter(AsyncApiAdapter):
         try:
             response = await self.detector.get(path)
             if not isinstance(response, dict):
-                if "command" in path:
-                    response = {path.split("/")[-1]: response}
-                else:
-                    response = {"value": response}
+                response = {path.split("/")[-1]: response}
 
-            respose = "{}".format(response)
             status_code = 200
         except LookupError as e:
             response = {'invalid path': str(e)}
