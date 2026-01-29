@@ -379,7 +379,7 @@ class XspressDetector(object):
 
         self.param["module"] = self._name
 
-        self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition"],
+        self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition", "trigger"],
                                  "execute": ("", lambda name: self.run_command(name))
                                  }
 
@@ -392,6 +392,8 @@ class XspressDetector(object):
                 await self.acquire(1)
             case "stop_acquisition":
                 await self.acquire(0)
+            case "trigger":
+                await self.trigger()
             case _:
                 logging.error(f"Unsupported command {name}")
 
@@ -558,6 +560,9 @@ class XspressDetector(object):
             return reply
         else:
             return await self._put(MessageType.CMD, "command/stop", 1)
+
+    async def trigger(self):
+        return await self._put(MessageType.CMD, "command/trigger", 1)
 
     async def set_mode(self, value):
         if value == 0:
