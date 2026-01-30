@@ -377,7 +377,25 @@ class XspressDetector(object):
         )
 
 
-        self.param["module"] = self._name
+        self.param["module"] = {"value": self._name}
+
+        self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition", "trigger"],
+                                 "execute": ("", lambda name: self.run_command(name))
+                                 }
+
+
+    async def run_command(self, name):
+        match name:
+            case "reconfigure":
+                await self.reconfigure(1)
+            case "start_acquisition":
+                await self.acquire(1)
+            case "stop_acquisition":
+                await self.acquire(0)
+            case "trigger":
+                await self.trigger()
+            case _:
+                logging.error(f"Unsupported command {name}")
 
     async def _get_value(self,path):
         return self._cache.get(path,None)
@@ -517,7 +535,7 @@ class XspressDetector(object):
 
         resp = await self._async_client.send_recv(self.configuration.get())
         # resp = await self._put(MessageType.CONFIG, XspressDetectorStr.CONFIG_CONFIG_PATH, self.settings_paths[mode])
-        resp = await self._put(MessageType.CMD, "config/disconnect", 1) # Here disconnect is inside config
+        resp = await self._put(MessageType.CMD, "command/disconnect", 1) # Here disconnect is inside config
         chans = self.mca_channels if mode == XSPRESS_MODE_MCA else self.mca_channels + 1
         await self._put(
             MessageType.CONFIG, "config/max_channels", chans
@@ -531,17 +549,20 @@ class XspressDetector(object):
             resp = await self._async_client.send_recv(self.configuration.get_daq())
         return resp
 
-    async def connect(self, *unused):
-        msg = _build_message(MessageType.CMD, {XspressDetectorStr.CMD_CONNECT: 1})
+    async def connect(self, value: bool = True, *unused):
+        msg = _build_message(MessageType.CMD, {XspressDetectorStr.CMD_CONNECT: value})
         return await self._async_client.send_recv(msg, timeout=20)
 
-    async def acquire(self, value, *unused):
+    async def acquire(self, value):
         if value:
-            reply = await self._put(MessageType.CMD, XspressDetectorStr.CMD_START, 1)
+            reply = await self._put(MessageType.CMD, "command/start", 1)
             self.acquisition_complete = False
             return reply
         else:
-            return await self._put(MessageType.CMD, XspressDetectorStr.CMD_STOP, 1)
+            return await self._put(MessageType.CMD, "command/stop", 1)
+
+    async def trigger(self):
+        return await self._put(MessageType.CMD, "command/trigger", 1)
 
     async def set_mode(self, value):
         if value == 0:
@@ -562,7 +583,7 @@ class XspressDetector(object):
     def _set(self, attr_name, value):
         setattr(self, attr_name, value)
 
-    async def _put(self, message_type: MessageType, config_str: str, value: any):
+    async def _put(self, message_type: MessageType, path: str, value: any):
         if not self._param_tree_waited:
             self.parameter_tree = await AsyncParameterTree(self.param)
             self._param_tree_waited = True
@@ -573,11 +594,7 @@ class XspressDetector(object):
                 "Control server is not connected! Check if it is running and tcp endpoint is configured correctly"
             )
 
-        field, item = config_str.split("/")
-        
-        # For when commands are available
-        if field == "command":
-            return self.COMMANDS[item](self,value)
+        _, item = path.split("/")
         
         if isinstance(value,list):
             index = 0
@@ -585,8 +602,8 @@ class XspressDetector(object):
                 if value[i] != -1:
                     index = i
                     break
-            self._cache[config_str][index] = value[index]
-            msg = _build_message(message_type, {item: self._cache[config_str]})
+            self._cache[path][index] = value[index]
+            msg = _build_message(message_type, {item: self._cache[path]})
             resp = await self._async_client.send_recv(msg)
             return resp
 
