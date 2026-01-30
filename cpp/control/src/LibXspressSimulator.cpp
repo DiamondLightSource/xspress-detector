@@ -606,7 +606,8 @@ int LibXspressSimulator::get_num_frames_read(int32_t *frames)
 
 int LibXspressSimulator::get_num_scalars(uint32_t *num_scalars)
 {
-  *num_scalars = XSP3_SW_NUM_SCALERS;
+  *num_scalars = 9;
+  return XSP_STATUS_OK;
 }
 
 int LibXspressSimulator::histogram_circ_ack(int channel,
