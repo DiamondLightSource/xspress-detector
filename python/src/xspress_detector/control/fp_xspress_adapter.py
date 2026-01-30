@@ -3,21 +3,18 @@ Created on March 2022
 
 :author: Alan Greer
 """
-import json
 import logging
 import os
-import asyncio
-import time
 
 from odin_data.control.odin_data_adapter import OdinDataAdapter
-from odin_data.control.fp_compression_adapter import FPCompressionAdapter
+
 from odin.adapters.adapter import (
     ApiAdapterResponse,
     request_types,
     response_types,
 )
 from tornado import escape
-from tornado.escape import json_encode, json_decode
+from tornado.escape import json_decode
 
 
 def bool_from_string(value):
@@ -27,7 +24,9 @@ def bool_from_string(value):
     return bool_value
 
 
-class FPXspressAdapter(FPCompressionAdapter):
+FP_ADAPTER_KEY = 'fr_adapter_name'
+
+class FPXspressAdapter(OdinDataAdapter):
     """
     FPXspressAdapter class
 
@@ -56,6 +55,9 @@ class FPXspressAdapter(FPCompressionAdapter):
         self._batch_size = 0
         super(FPXspressAdapter, self).__init__(**kwargs)
 
+        self._fr_adapter_name = kwargs.get(FP_ADAPTER_KEY, None)
+        self._fr_adapter = None
+
     def initialize(self, adapters):
         """Initialize the adapter after it has been loaded.
         Find and record the FR adapter for later error checks
@@ -74,6 +76,20 @@ class FPXspressAdapter(FPCompressionAdapter):
             self.data_datasets = ["mca_" + str(i) for i in range(self._num_channels)]
         else:
             logging.error("FP adapter could not connect to the Xspress adapter: {}".format(self._xsp_adapter_name))
+        
+        if self._fr_adapter_name is None:
+            return
+
+        if self._fr_adapter_name not in adapters:
+            raise ValueError(
+                "Given FR adapter name '{}', but it is not in the loaded adapters {}".format(
+                    self._fr_adapter_name, adapters
+                )
+            )
+
+        self._fr_adapter = adapters[self._fr_adapter_name]
+        logging.info("FP adapter initiated connection to FR adapter: {}".format(self._fr_adapter_name))
+        
         super(FPXspressAdapter, self).initialize(adapters)
 
     @request_types('application/json', 'application/vnd.odin-native')
@@ -206,4 +222,4 @@ class FPXspressAdapter(FPCompressionAdapter):
                     "config/hdf/dataset/data",
                     "config/hdf/dataset/{}".format(dataset) + "/{}".format(client),
                 )
-                super(FPCompressionAdapter.__base__, self).put(dataset_path, request)
+                super(OdinDataAdapter.__base__, self).put(dataset_path, request)

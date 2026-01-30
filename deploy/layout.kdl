@@ -1,24 +1,47 @@
 layout {
-    pane size=1 borderless=true {
-        plugin location="zellij:tab-bar"
-    }
-    pane split_direction="vertical" {
-        pane split_direction="horizontal" {
-            pane command="./stFrameReceiver1.sh"
-            pane command="./stFrameProcessor1.sh"
-            pane command="./stFrameReceiver2.sh"
-            pane command="./stFrameProcessor2.sh"
+    default_tab_template {
+        // the default zellij tab-bar and status bar plugins
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
         }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab split_direction="horizontal" name="Frame Receiver/Processor"{
         pane split_direction="horizontal" {
-            pane command="./stControlServer.sh"
-            pane command="./stMetaWriter.sh"
-            pane command="bash" {
-                args "-c" "sleep 3; ./stOdinServer.sh"
+            pane split_direction="vertical" {
+                pane command="./stFrameReceiver1.sh"                
+                pane command="./stFrameProcessor1.sh"
+            }
+            pane split_direction="vertical" {
+                pane command="./stFrameReceiver2.sh"
+                pane command="./stFrameProcessor2.sh"
+            }
+
+        }
+    }
+    tab split_direction="vertical" name="Meta Writer"{
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane command="./stMetaWriter.sh"
             }
         }
     }
-    pane size=2 borderless=true {
-        plugin location="zellij:status-bar"
+    tab split_direction="vertical" name="cpp server"{    
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane command="./stControlServer.sh"
+            }
+        }
+    }
+    tab split_direction="vertical" name="python servers"{    
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane command="./stOdinServer.sh"
+            }
+        }
     }
 }
 session_name "XSPRESS"
