@@ -873,6 +873,7 @@ int LibXspressWrapper::get_num_frames_read(int32_t *frames)
 int LibXspressWrapper::get_num_scalars(uint32_t *num_scalars)
 {
   *num_scalars = XSP3_SW_NUM_SCALERS;
+  return XSP_STATUS_OK;
 }
 
 int LibXspressWrapper::histogram_circ_ack(int channel,
