@@ -33,4 +33,4 @@ jobs:
 
       - name: Test can import from module
         # If more than one module in src/ replace with module name to test
-        run: python -c 'from eiger_detector.data.eiger_meta_writer import EigerMetaWriter'
+        run: python -c 'from xspress_detector.data.xspress_meta_writer import XspressMetaWriter'
