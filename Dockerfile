@@ -1,6 +1,6 @@
 FROM ghcr.io/odin-detector/odin-data-build:1.12.0 AS developer
 
-from developer as build
+FROM developer AS build
 
 # Copy xspress-detector source in for build
 COPY . /tmp/xspress-detector
