@@ -11,3 +11,6 @@ cmake-build-debug/
 CMakeFiles
 Makefile
 venv
+.coverage
+cov.xml
+.tox
