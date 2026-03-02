@@ -1,8 +1,8 @@
 FROM ghcr.io/odin-detector/odin-data-build:1.12.0 AS developer
 
-FROM developer AS build
-
 RUN git clone https://github.com/DiamondLightSource/libxspress.git /libxspress
+
+FROM developer AS build
 
 # Copy xspress-detector source in for build
 COPY . /tmp/xspress-detector
@@ -10,7 +10,7 @@ COPY . /tmp/xspress-detector
 # C++
 WORKDIR /tmp/xspress-detector
 RUN mkdir -p build && cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX=/odin -DODINDATA_ROOT_DIR=/odin -DLIBXSPRESS_ROOT_DIR=/libxspress ../cpp && \
+    cmake -DCMAKE_INSTALL_PREFIX=/odin -DODINDATA_ROOT_DIR=/odin -DLIBXSPRESS_ROOT_DIR=/libxspress/src ../cpp && \
     make -j8 VERBOSE=1 && \
     make install
 

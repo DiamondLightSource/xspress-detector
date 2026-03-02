@@ -5,7 +5,7 @@
     "cmake.installPrefix": "/odin",
     "cmake.configureArgs": [
         "-DODINDATA_ROOT_DIR=/odin",
-        "-DLIBXSPRESS_ROOT_DIR=/workspaces/libxspress/src"
+        "-DLIBXSPRESS_ROOT_DIR=/libxspress/src"
     ],
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "editor.formatOnSave": false,
