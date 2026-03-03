@@ -1,6 +1,6 @@
 FROM ghcr.io/odin-detector/odin-data-build:1.12.0 AS developer
 
-RUN git clone https://github.com/DiamondLightSource/libxspress.git /libxspress
+RUN git clone https://gitlab.diamond.ac.uk/controls/tools/libxspress.git /libxspress
 
 FROM developer AS build
 
