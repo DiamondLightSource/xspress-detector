@@ -19,9 +19,10 @@ WORKDIR /tmp/xspress-detector/python
 RUN python -m pip install .
 
 # Final image
-FROM ghcr.io/odin-detector/odin-data-runtime:1.12.0
+FROM ghcr.io/odin-detector/odin-data-runtime:1.12.0 AS runtime
 COPY --from=build /odin /odin
 COPY --from=build /libxspress /libxspress
+COPY --from=build /venv /venv
 
 ENV PATH=/odin/bin:/odin/venv/bin:$PATH
 WORKDIR /odin
