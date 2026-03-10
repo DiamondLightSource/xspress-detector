@@ -1,4 +1,3 @@
-
 class XspressApi:
     config_uri = "config"
     status_uri = "status"
@@ -13,21 +12,12 @@ class XspressApi:
     status_parameters = {
         "num_mca": 0,
         "num_list": 0,
-        "num_chan_mca": 0,
-        "num_chan_list": 0,
         "start_time": "",
         "uptime": "",
         "username": "",
-        "scan": 0,
         "endpoint": "",
-        "debug_level": 0,
         "update": 0,
         "reset": 0,
-        "sensor": {
-            "height": 0,
-            "width": 0,
-            "bytes": 0,
-        },
         "manufacturer": "Quantum Detectors",
         "model": "Xspress 3",
         "acquisition_complete": False,
@@ -70,13 +60,12 @@ class XspressApi:
         "max_channels": 0,
         "mca_channels": 0,
         "max_spectra": 0,
-        "debug": 0,
         "config_path": "",
         "config_save_path": "",
         "use_resgrades": False,
         "run_flags": 0,
         "dtc_energy": 0.0,
-        "trigger_mode": 0,
+        "trigger_mode": (0, {"allowed_values": {0: "Software", 1: "Hardware", 2: "Burst", 3: "TTL Veto Only", 4: "IDC", 5: "Software Start/Stop", 6: "TTL Both"}}),
         "invert_f0": 0,
         "invert_veto": 0,
         "debounce": 0,
