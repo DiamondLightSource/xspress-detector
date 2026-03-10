@@ -65,7 +65,7 @@ class XspressApi:
         "use_resgrades": False,
         "run_flags": 0,
         "dtc_energy": 0.0,
-        "trigger_mode": (0, {"allowed_values": {0: "Software", 1: "Hardware", 2: "Burst", 3: "TTL Veto Only", 4: "IDC", 5: "Software Start/Stop", 6: "TTL Both"}}),
+        "trigger_mode": 0,
         "invert_f0": 0,
         "invert_veto": 0,
         "debounce": 0,
