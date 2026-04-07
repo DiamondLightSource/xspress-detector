@@ -23,6 +23,10 @@ FROM ghcr.io/odin-detector/odin-data-build:1.12.0-xspress-dev4 AS runtime
 COPY --from=build /odin /odin
 COPY --from=build /libxspress /libxspress
 COPY --from=build /venv /venv
+COPY deploy /odin/xspress-deploy
 
 ENV PATH=/odin/bin:/odin/venv/bin:$PATH
+
 WORKDIR /odin
+
+CMD ["sh", "-c", "cd /odin/xspress-deploy && zellij --layout ./layout.kdl"]
