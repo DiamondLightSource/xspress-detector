@@ -9,6 +9,13 @@ layout {
             plugin location="zellij:status-bar"
         }
     }
+    tab split_direction="vertical" name="Live View Merger"{
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane command="./stLiveViewMerge.sh"
+            }
+        }
+    }
     tab split_direction="horizontal" name="Frame Receiver"{
         pane split_direction="horizontal" {
             pane split_direction="vertical" {
