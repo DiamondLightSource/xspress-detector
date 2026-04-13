@@ -26,9 +26,9 @@ class LiveViewCombiner(object):
             subscriber = self._context.socket(zmq.SUB)
             subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
             subscriber.setsockopt(zmq.SNDHWM, 5)
-            subscriber.connect("tcp://{}".format(host))
-            self._subscribers[subscriber] = host
-            logging.info("Subscriber zmq sockets = tcp://{}".format(host))
+            subscriber.connect("tcp://{}".format(port))
+            self._subscribers[subscriber] = port
+            logging.info("Subscriber zmq sockets = tcp://{}".format(port))
 
     def new_frame(self):
         frame = {}
