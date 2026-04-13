@@ -52,7 +52,9 @@ class XspressAdapter(AsyncApiAdapter):
             run_flags = int(self.options['run_flags'])
             debug = int(self.options["debug"])
             # trigger_mode = XspressTriggerMode.str2int(self.options["trigger_mode"])
-            daq_endpoints= self.options["daq_endpoints"].replace(" ", "").split(",")
+            daq_endpoints = self.options["daq_endpoints"].replace(" ", "").split(",")
+            fr_endpoints = self.options["fr_endpoints"].replace(" ", "").split(",")
+            fp_endpoints = self.options["fp_endpoints"].replace(" ", "").split(",")
             self.detector.configure(
                 num_cards=num_cards,
                 num_tf=num_tf,
@@ -63,6 +65,8 @@ class XspressAdapter(AsyncApiAdapter):
                 run_flags=run_flags,
                 debug=debug,
                 daq_endpoints=daq_endpoints,
+                fr_endpoints=fr_endpoints,
+                fp_endpoints=fp_endpoints
             )
             logging.debug('done configuring detector')
         except Exception as e:

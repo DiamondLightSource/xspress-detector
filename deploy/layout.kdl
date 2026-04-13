@@ -9,17 +9,20 @@ layout {
             plugin location="zellij:status-bar"
         }
     }
-    tab split_direction="horizontal" name="Frame Receiver/Processor"{
+    tab split_direction="horizontal" name="Frame Receiver"{
         pane split_direction="horizontal" {
             pane split_direction="vertical" {
                 pane command="./stFrameReceiver1.sh"                
-                pane command="./stFrameProcessor1.sh"
-            }
-            pane split_direction="vertical" {
                 pane command="./stFrameReceiver2.sh"
+            }
+        }
+    }
+    tab split_direction="horizontal" name="Frame Processor"{
+        pane split_direction="horizontal" {
+            pane split_direction="vertical" {
+                pane command="./stFrameProcessor1.sh"
                 pane command="./stFrameProcessor2.sh"
             }
-
         }
     }
     tab split_direction="vertical" name="Meta Writer"{
@@ -39,7 +42,9 @@ layout {
     tab split_direction="vertical" name="python servers"{    
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
-                pane command="./stOdinServer.sh"
+                pane command="bash" {
+                        args "-c" "sleep 3; ./stOdinServer.sh"
+                    }
             }
         }
     }

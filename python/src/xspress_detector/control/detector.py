@@ -340,7 +340,10 @@ class XspressDetector(object):
         self.start_time = datetime.now()
         self.username = getpass.getuser()
 
-        self._async_client = AsyncClient(ip, port)
+
+        self.detector_ip = ip
+        self.detector_port = port
+        self._async_client = AsyncClient(self.detector_ip, self.detector_port)
         self.timeout = 1
         self.sched = AsyncPeriodicJob(self.read_config, UPDATE_PARAMS_PERIOD_SECONDS)
 
@@ -379,7 +382,7 @@ class XspressDetector(object):
 
         self.param["module"] = {"value": self._name}
 
-        self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition", "trigger"],
+        self.param["command"] = {"allowed": ["reconfigure","start_acquisition","stop_acquisition", "software_trigger"],
                                  "execute": ("", lambda name: self.run_command(name))
                                  }
 
@@ -392,7 +395,7 @@ class XspressDetector(object):
                 await self.acquire(1)
             case "stop_acquisition":
                 await self.acquire(0)
-            case "trigger":
+            case "software_trigger":
                 await self.trigger()
             case _:
                 logging.error(f"Unsupported command {name}")
@@ -471,7 +474,7 @@ class XspressDetector(object):
         configs = [copy.deepcopy(command) for _ in range(num_process)]
 
         if mode == XSPRESS_MODE_MCA:
-            dataset_values = {"dims": [1, 4096], "chunks": [1, 1, 4096]}
+            dataset_values = {"datatype": "uint32", "compression": "blosc", "dims": [1, 4096], "chunks": [1, 1, 4096]}
             for i in range(self.mca_channels):
                 fp_index = i // self.num_chan_per_process_mca
                 configs[fp_index]["hdf"]["dataset"][f"mca_{i}"] = dataset_values
@@ -501,7 +504,7 @@ class XspressDetector(object):
                     "rx_ports": "{},".format(index + 15150),
                     "rx_type": "zmq",
                     "decoder_type": "Xspress",
-                    "rx_address": "127.0.0.1",
+                    "rx_address": "{}".format(self.detector_ip),
                 }
                 for index in range(self.num_process_mca)
             ]
@@ -646,19 +649,23 @@ class XspressDetector(object):
         run_flags,
         debug,
         daq_endpoints,
+        fr_endpoints,
+        fp_endpoints,
     ):
         self.logger.critical(debug_method())
         self.max_channels = max_channels
         self.mca_channels = max_channels
         self.max_spectra = max_spectra
         self.run_flags = run_flags
+        logging.info("daq_enpoints = {}\nfr_endpoints = {}\nfp_endpoints = {}\n"
+                     .format(daq_endpoints, fr_endpoints, fp_endpoints))
         self.fr_clients = [
-            AsyncClient("127.0.0.1", 10000 + (10 * port_offset))
-            for port_offset in range(self.num_process_mca)
+            AsyncClient(endpoint.split(":")[0], endpoint.split(":")[1])
+            for endpoint in fr_endpoints
         ]
         self.fp_clients = [
-            AsyncClient("127.0.0.1", 10004 + (10 * port_offset))
-            for port_offset in range(self.num_process_mca)
+            AsyncClient(endpoint.split(":")[0], endpoint.split(":")[1])
+            for endpoint in fp_endpoints
         ]
 
         x = XspressDetectorStr
