@@ -1,4 +1,4 @@
-FROM ghcr.io/odin-detector/odin-data-build:1.12.0 AS developer
+FROM ghcr.io/odin-detector/odin-data-build:1.12.0-xspress-dev4 AS developer
 
 RUN git clone https://github.com/DiamondLightSource/libxspress.git /libxspress
 
@@ -19,7 +19,7 @@ WORKDIR /tmp/xspress-detector/python
 RUN python -m pip install .
 
 # Final image
-FROM ghcr.io/odin-detector/odin-data-runtime:1.12.0 AS runtime
+FROM ghcr.io/odin-detector/odin-data-build:1.12.0-xspress-dev4 AS runtime
 COPY --from=build /odin /odin
 COPY --from=build /libxspress /libxspress
 COPY --from=build /venv /venv
