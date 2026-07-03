@@ -58,7 +58,7 @@ class LiveViewCombiner(object):
                             publish = False
                     
                     if publish:
-                        header['shape'] = [str(int(header['shape'][0])*int(header['shape'][1])*len(self._subscribers)), header['shape'][2]]
+                        header['shape'] = [(int(header['shape'][0])*int(header['shape'][1])*len(self._subscribers)), int(header['shape'][2])]
                         new_data = None
                         for index in current_frame:
                             if new_data is None:

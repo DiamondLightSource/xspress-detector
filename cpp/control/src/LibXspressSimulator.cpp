@@ -780,14 +780,12 @@ int LibXspressSimulator::histogram_memcpy(uint32_t *buffer,
   int thisPath, chanIdx;
   bool circ_buffer;
 
-  uint32_t *local_buffer;
-  // uint32_t local_buffer[4096];
+  uint32_t local_buffer[4096];
   for(int chan=start_chan; chan < start_chan + num_chan; chan++)
   {
-    // for (int i = 0; i < 4096; i++){
-    //   local_buffer[i] = (uint32_t)((double)simulated_mca_[i] * (9.0 + rand_gen()));    
-    // }
-    local_buffer = (uint32_t *)(simulated_mca_);    
+    for (int i = 0; i < 4096; i++){
+      local_buffer[i] = (uint32_t)((double)simulated_mca_[i] * (9.0 + rand_gen()));
+    }
     memcpy(buffer, local_buffer, 4096*sizeof(int32_t));
     buffer+=num_eng*num_aux;
   }
